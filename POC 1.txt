@@ -1,0 +1,1810 @@
+1) user-service microservice
+
+UserServiceApplication.java
+package com.project.user_service;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@EnableDiscoveryClient
+@SpringBootApplication
+public class UserServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(UserServiceApplication.class, args);
+	}
+
+}
+
+AppConfig.java
+package com.project.user_service.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@Configuration
+public class AppConfig {
+	@Bean
+	public BCryptPasswordEncoder passEncodoer() {
+		return new BCryptPasswordEncoder();
+	}
+}
+
+UserController.java
+package com.project.user_service.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.project.user_service.dto.LoginDTO;
+import com.project.user_service.dto.UserDTO;
+import com.project.user_service.service.UserService;
+
+import jakarta.validation.Valid;
+
+@CrossOrigin(origins = "http://localhost:3000")
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+	private final UserService userService;
+	
+	public UserController(UserService userService) {
+		this.userService=userService;
+	}
+	
+	//Register a new user
+	@PostMapping
+	public ResponseEntity<?> registerUser(@Valid @RequestBody UserDTO userDTO) {
+		return userService.registerUser(userDTO);
+	}
+	
+	//Get user by ID
+	@GetMapping("/{userId}")
+	public ResponseEntity<?> getUserById(@PathVariable Long userId) {
+		return userService.getUserById(userId);
+	}
+	
+	//Get user by username
+	@GetMapping("/credentials")
+	public ResponseEntity<?> getUserByUsername(@RequestParam String username){
+		return userService.getUserByUsername(username);
+	}
+	
+	//Update user profile
+	@PutMapping("/{userId}")
+	public ResponseEntity<?> updateUser(@PathVariable Long userId, @RequestBody UserDTO userDTO) {
+		return userService.updateUser(userId,userDTO);
+	}
+	
+	//Delete user
+	@DeleteMapping("/{userId}")
+	public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
+		return userService.deleteUser(userId);
+	}
+	
+	//Login user
+	@PostMapping("/login")
+	public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO) {
+		return userService.login(loginDTO);
+	}
+}
+
+LoginDTO.java
+package com.project.user_service.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public class LoginDTO {
+	@NotBlank(message="Password is mandatory")
+	private String password;
+	
+	@NotBlank(message="Username is mandotory")
+	private String username;
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+	
+	
+}
+
+UserDTO.java
+package com.project.user_service.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class UserDTO {
+	
+	@NotBlank(message = "Username is mandatory")
+	@Size(min = 4, max = 20, message = "Username must be between 4 and 20 characters")
+	private String username;
+	
+	@NotBlank(message = "Password is mandatory")
+	@Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
+	private String password;
+	
+	@Email(message = "Email should be valid")
+	@NotBlank(message = "Email is mandatory")
+	private String email;
+	
+	@NotBlank(message = "First name is mandatory")
+	private String firstName;
+	
+	@NotBlank(message = "Last name is mandatory")
+	private String lastName;
+	
+	private String role;
+	
+	//Getters and Setters
+	public String getUsername() {
+		return username;
+	}
+	
+	public void setUsername(String username) {
+		this.username = username;
+	}
+	
+	public String getPassword() {
+		return password;
+	}
+	
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	
+	public String getEmail() {
+		return email;
+	}
+	
+	public void setEmail(String email) {
+		this.email=email;
+	}
+	
+	public String getFirstName() {
+		return firstName;
+	}
+	
+	public void setFirstName(String firstName) {
+		this.firstName=firstName;
+	}
+	
+	public String getLastName() {
+		return lastName;
+	}
+	
+	public void setLastName(String lastName) {
+		this.lastName=lastName;
+	}
+	
+	public String getRole() {
+		return role;
+	}
+	
+	public void setRole(String role) {
+		this.role=role;
+	}
+}
+
+User.java
+package com.project.user_service.entity;
+
+import com.project.user_service.dto.UserDTO;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name="user")
+public class User {
+	
+	@Id
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	private Long id;
+	
+	private String username;
+	private String password;
+	private String email;
+	private String firstName;
+	private String lastName;
+	private String role;
+	
+	public User(UserDTO dto) {
+		this.username=dto.getUsername();
+		this.password=dto.getPassword();
+		this.email=dto.getEmail();
+		this.firstName=dto.getFirstName();
+		this.lastName=dto.getLastName();
+		this.role=dto.getRole();
+	}
+	
+	public void updateFromDTO(UserDTO dto) {
+		this.username=dto.getUsername();
+		this.password=dto.getPassword();
+		this.email=dto.getEmail();
+		this.firstName=dto.getFirstName();
+		this.lastName=dto.getLastName();
+		this.role=dto.getRole();
+	}
+}
+
+ErrorResponse.java
+package com.project.user_service.exception;
+
+public class ErrorResponse {
+	private int status;
+	private String message;
+	
+	public ErrorResponse(int status,String message) {
+		this.status=status;
+		this.message=message;
+	}
+	
+	public int getStatus() {
+		return status;
+	}
+	
+	public void setStatus(int status) {
+		this.status=status;
+	}
+	
+	public String getMessage() {
+		return message;
+	}
+	
+	public void setMessage(String message) {
+		this.message=message;
+	}
+}
+
+GlobalExceptionHandler.java
+package com.project.user_service.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+	
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex){
+		ErrorResponse errorResponse = new ErrorResponse(HttpStatus.NOT_FOUND.value(),ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+	}
+	
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+		ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(),ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+	}
+	
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex){
+		ErrorResponse errorResponse = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),"An unexpected error occurred");
+		return new ResponseEntity<>(errorResponse,HttpStatus.INTERNAL_SERVER_ERROR);
+	}
+}
+
+UserNotFoundException.java
+package com.project.user_service.exception;
+
+public class UserNotFoundException extends RuntimeException{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public UserNotFoundException(String message) {
+		super(message);
+	}
+}
+
+UserRepository.java
+package com.project.user_service.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.project.user_service.entity.User;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>{
+	User findByUsernameAndPassword(String username, String password);
+	User findByEmail(String email);
+	User findByUsername(String username);
+}
+
+UserService.java
+package com.project.user_service.service;
+
+import org.springframework.http.ResponseEntity;
+
+import com.project.user_service.dto.LoginDTO;
+import com.project.user_service.dto.UserDTO;
+
+public interface UserService {
+	ResponseEntity<?> registerUser(UserDTO userDTO);
+	ResponseEntity<?> getUserById(Long userId);
+	ResponseEntity<?> updateUser(Long userId, UserDTO userDTO);
+	ResponseEntity<?> deleteUser(Long userId);
+	ResponseEntity<?> login(LoginDTO loginDTO);
+	ResponseEntity<?> getUserByUsername(String username);
+}
+
+UserServiceImpl.java
+package com.project.user_service.service;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.project.user_service.dto.LoginDTO;
+import com.project.user_service.dto.UserDTO;
+import com.project.user_service.entity.User;
+import com.project.user_service.repository.UserRepository;
+
+@Service
+public class UserServiceImpl implements UserService{
+	private final UserRepository userRepository;
+	private final BCryptPasswordEncoder passwordEncoder;
+	
+	public UserServiceImpl(UserRepository userRepository,BCryptPasswordEncoder passwordEncoder) {
+		this.userRepository=userRepository;
+		this.passwordEncoder=passwordEncoder;
+	}
+	
+	@Override
+	public ResponseEntity<?> registerUser(UserDTO userDTO){
+		String encodedPassword=passwordEncoder.encode(userDTO.getPassword());
+		userDTO.setPassword(encodedPassword);
+		User newUser = new User(userDTO);
+		userRepository.save(newUser);
+		return ResponseEntity.ok(newUser);
+	}
+	
+	@Override
+	public ResponseEntity<?> getUserById(Long userId){
+		return userRepository.findById(userId)
+				.map(ResponseEntity::ok)
+				.orElseGet(()->ResponseEntity.notFound().build());
+	}
+	
+	@Override
+	public ResponseEntity<?> updateUser(Long userId, UserDTO userDTO){
+		return userRepository.findById(userId).map(existingUser -> {
+			existingUser.updateFromDTO(userDTO);
+			userRepository.save(existingUser);
+			return ResponseEntity.ok(existingUser);
+		}).orElse(ResponseEntity.notFound().build());
+	}
+	
+	@Override
+	public ResponseEntity<?> deleteUser(Long userId){
+		if(userRepository.existsById(userId)) {
+			userRepository.deleteById(userId);
+			return ResponseEntity.noContent().build();
+		}
+		return ResponseEntity.notFound().build();
+	}
+	
+	@Override
+	public ResponseEntity<?> login(LoginDTO loginDTO) {
+	    User user = userRepository.findByUsername(loginDTO.getUsername());
+	    if(user != null && passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+	    	return ResponseEntity.ok("Login Successful");
+	    }
+	    return ResponseEntity.status(401).body("Invalid credentials");
+	}
+	
+	@Override
+	public ResponseEntity<?> getUserByUsername(String username){
+		User user = userRepository.findByUsername(username);
+		return (user != null) ? ResponseEntity.ok(user) : ResponseEntity.status(404).body("User not found");
+	}
+
+}
+
+Application.properties
+spring.application.name=user-service
+
+spring.datasource.url=jdbc:mysql://localhost:3306/user_service
+spring.datasource.username=root
+spring.datasource.password=Abcs1234@#098
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+
+2) loan-service microservice
+LoanServiceApplication.java
+package com.project.loan_service;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@SpringBootApplication
+@EnableDiscoveryClient
+public class LoanServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(LoanServiceApplication.class, args);
+	}
+
+}
+
+LoanController.java
+package com.project.loan_service.controller;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.project.loan_service.entity.Loan;
+import com.project.loan_service.service.LoanService;
+
+@RestController
+@RequestMapping("/api/loans")
+public class LoanController {
+	
+	private final LoanService loanService;
+	
+	public LoanController(LoanService loanService) {
+		this.loanService=loanService;
+	}
+	
+	@PostMapping
+	public ResponseEntity<Loan> applyLoan(@RequestBody Loan loan) {
+		Loan newLoan = loanService.applyLoan(loan);
+		return ResponseEntity.ok(newLoan);
+	}
+	
+	@GetMapping("/{loanId}")
+	public ResponseEntity<Loan> getLoanById(@PathVariable Long loanId) {
+		Optional<Loan> loan = loanService.getLoanById(loanId);
+		return loan.map(ResponseEntity::ok).orElseGet(()->ResponseEntity.notFound().build());
+	}
+	
+	@GetMapping("/user/{userId}")
+	public ResponseEntity<List<Loan>> getLoansByUserId(@PathVariable Long userId) {
+		List<Loan> loans = loanService.getLoansByUserId(userId);
+		return ResponseEntity.ok(loans);
+	}
+	
+	@GetMapping("/status/{status}")
+	public ResponseEntity<List<Loan>> getLoansByStatus(@PathVariable String status){
+		List<Loan> loans = loanService.getLoansByStatus(status);
+		return ResponseEntity.ok(loans);
+	}
+	
+	@GetMapping("/date-range")
+	public ResponseEntity<List<Loan>> getLoansByDateRange(@RequestParam LocalDate startDate, @RequestParam LocalDate endDate){
+		List<Loan> loans = loanService.getLoansByDateRange(startDate,endDate);
+		return ResponseEntity.ok(loans);
+	}
+	
+	@PutMapping("/{loanId}/status")
+	public ResponseEntity<Loan> updateLoanStatus(@PathVariable Long loanId, @RequestParam String status) {
+		Loan updatedLoan = loanService.updateLoanStatus(loanId,status);
+		return updatedLoan != null ? ResponseEntity.ok(updatedLoan) : ResponseEntity.notFound().build();
+	}
+	
+	@DeleteMapping("/{loanId}")
+	public ResponseEntity<Void> deleteLoan(@PathVariable Long loanId){
+		loanService.deleteLoan(loanId);
+		return ResponseEntity.noContent().build();
+	}
+}
+
+LoanDTO.java
+package com.project.loan_service.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
+public class LoanDTO {
+	
+	@NotNull(message = "User ID cannot be null")
+	private Long userId;
+	
+	@NotNull(message = "Amount cannot be null")
+	@Positive(message = "Amount must be positive")
+	private BigDecimal amount;
+
+	@NotNull(message = "Loan Date cannot be null")
+	private LocalDate loanDate;
+	
+	@NotNull(message = "Status cannot be null")
+	@Size(min = 2, max = 20, message = "Status must be between 2 and 20 characters")
+	private String status;
+	
+	public Long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
+
+	public BigDecimal getAmount() {
+		return amount;
+	}
+
+	public void setAmount(BigDecimal amount) {
+		this.amount = amount;
+	}
+
+	public LocalDate getLoanDate() {
+		return loanDate;
+	}
+
+	public void setLoanDate(LocalDate loanDate) {
+		this.loanDate = loanDate;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+}
+
+Loan.java
+package com.project.loan_service.entity;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "loans")
+public class Loan {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	
+	@Column(nullable=false)
+	private Long userId;
+	
+	@Column(nullable=false)
+	private BigDecimal amount;
+	
+	@Column(nullable =false)
+	private LocalDate loanDate;
+	
+	@Column(nullable=false)
+	private String status;
+	
+	public Loan() {
+	}
+	
+	public Loan(Long userId, BigDecimal amount, LocalDate loanDate, String status) {
+		this.userId=userId;
+		this.amount=amount;
+		this.loanDate=loanDate;
+		this.status=status;
+	}
+	
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public Long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
+
+	public BigDecimal getAmount() {
+		return amount;
+	}
+
+	public void setAmount(BigDecimal amount) {
+		this.amount = amount;
+	}
+
+	public LocalDate getLoanDate() {
+		return loanDate;
+	}
+
+	public void setLoanDate(LocalDate loanDate) {
+		this.loanDate = loanDate;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+}
+
+LoanRepository.java
+package com.project.loan_service.repository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.project.loan_service.entity.Loan;
+
+@Repository
+public interface LoanRepository extends JpaRepository<Loan,Long>{
+	List<Loan> findByUserId(Long userId);
+	List<Loan> findByStatus(String status);
+	List<Loan> findByLoanDateBetween(LocalDate startDate, LocalDate endDate);
+}
+
+LoanService.java
+package com.project.loan_service.service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import com.project.loan_service.entity.Loan;
+
+public interface LoanService {
+	Loan applyLoan(Loan loan);
+	Optional<Loan> getLoanById(Long loanId);
+	List<Loan> getLoansByUserId(Long userId);
+	List<Loan> getLoansByStatus(String status);
+	List<Loan> getLoansByDateRange(LocalDate startDate, LocalDate endDate);
+	Loan updateLoanStatus(Long loanId,String status);
+	void deleteLoan(Long loanId);
+}
+
+LoanServiceImpl.java
+package com.project.loan_service.service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.project.loan_service.entity.Loan;
+import com.project.loan_service.repository.LoanRepository;
+
+@Service
+public class LoanServiceImpl implements LoanService{
+	private final LoanRepository loanRepository;
+	
+	public LoanServiceImpl(LoanRepository loanRepository) {
+		this.loanRepository=loanRepository;
+	}
+	
+	@Override
+	public Loan applyLoan(Loan loan) {
+		return loanRepository.save(loan);
+	}
+	
+	@Override
+	public Optional<Loan> getLoanById(Long loanId){
+		return loanRepository.findById(loanId);
+	}
+	
+	@Override
+	public List<Loan> getLoansByUserId(Long userId){
+		return loanRepository.findByUserId(userId);
+	}
+	
+	@Override
+	public List<Loan> getLoansByStatus(String status){
+		return loanRepository.findByStatus(status);
+	}
+	
+	@Override
+	public List<Loan> getLoansByDateRange(LocalDate startDate, LocalDate endDate){
+		return loanRepository.findByLoanDateBetween(startDate,endDate);
+	}
+	
+	@Override
+	public Loan updateLoanStatus(Long loanId,String status) {
+		Optional<Loan> loanOptional=loanRepository.findById(loanId);
+		if(loanOptional.isPresent()) {
+			Loan loan = loanOptional.get();
+			loan.setStatus(status);
+			return loanRepository.save(loan);
+		}
+		return null;
+	}
+	
+	@Override
+	public void deleteLoan(Long loanId) {
+		loanRepository.deleteById(loanId);
+	}
+}
+
+Application.properties
+spring.application.name=loan-service
+server.port=8081
+spring.datasource.url=jdbc:mysql://localhost:3306/loan_service
+spring.datasource.username=root
+spring.datasource.password=Abcs1234@#098
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+
+3) repayment-service microservice
+RepaymentServiceApplication.java
+package com.project.repayment_service;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@EnableDiscoveryClient
+@SpringBootApplication
+public class RepaymentServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(RepaymentServiceApplication.class, args);
+	}
+
+}
+
+RepaymentController.java
+package com.project.repayment_service.controller;
+
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.project.repayment_service.dto.RepaymentDTO;
+import com.project.repayment_service.service.RepaymentService;
+
+@RestController
+@RequestMapping("/api/repayments")
+public class RepaymentController {
+
+	private final RepaymentService repaymentService;
+
+	public RepaymentController(RepaymentService repaymentService) {
+		this.repaymentService=repaymentService;
+	}
+	@PostMapping
+	public ResponseEntity<RepaymentDTO> createRepayment(@RequestBody RepaymentDTO dto) {
+		return ResponseEntity.ok(repaymentService.createRepayment(dto));
+	}
+
+	@GetMapping("/{repaymentId}")
+	public ResponseEntity<RepaymentDTO> getRepaymentById(@PathVariable Long repaymentId) {
+		return ResponseEntity.ok(repaymentService.getRepaymentById(repaymentId));
+	}
+
+	@GetMapping("/loan/{loanId}")
+	public ResponseEntity<List<RepaymentDTO>> getRepaymentsByLoanId (@PathVariable Long loanId){ 
+		return ResponseEntity.ok(repaymentService.getRepaymentsByLoanId(loanId)); 
+	}
+
+	@GetMapping
+	public ResponseEntity<List<RepaymentDTO>> getAllRepayments() {
+
+		return ResponseEntity.ok(repaymentService.getAllRepayments());
+
+	}
+
+	@DeleteMapping("/{repaymentId}")
+	public ResponseEntity<Void> deleteRepayment(@PathVariable Long repaymentId) {
+
+		repaymentService.deleteRepayment(repaymentId);
+
+		return ResponseEntity.noContent().build();
+
+	}
+
+}
+
+RepaymentDTO.java
+package com.project.repayment_service.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class RepaymentDTO {
+	private Long id;
+	private Long loanId;
+	private BigDecimal amountPaid;
+	private LocalDate paymentDate;
+	private String status;
+	
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
+	public Long getLoanId() {
+		return loanId;
+	}
+	public void setLoanId(Long loanId) {
+		this.loanId = loanId;
+	}
+	public BigDecimal getAmountPaid() {
+		return amountPaid;
+	}
+	public void setAmountPaid(BigDecimal amountPaid) {
+		this.amountPaid = amountPaid;
+	}
+	public LocalDate getPaymentDate() {
+		return paymentDate;
+	}
+	public void setPaymentDate(LocalDate paymentDate) {
+		this.paymentDate = paymentDate;
+	}
+	public String getStatus() {
+		return status;
+	}
+	public void setStatus(String status) {
+		this.status = status;
+	}
+	
+	
+}
+
+Repayment.java
+package com.project.repayment_service.entity;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name="repayments")
+public class Repayment {
+	
+	@Id
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	private Long id;
+	
+	@Column(nullable=false)
+	private Long loanId;
+	
+	@Column(nullable=false)
+	private BigDecimal amountPaid;
+	
+	@Column(nullable=false)
+	private LocalDate paymentDate;
+	
+	@Column(nullable=false)
+	private String status;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public Long getLoanId() {
+		return loanId;
+	}
+
+	public void setLoanId(Long loanId) {
+		this.loanId = loanId;
+	}
+
+	public BigDecimal getAmountPaid() {
+		return amountPaid;
+	}
+
+	public void setAmountPaid(BigDecimal amountPaid) {
+		this.amountPaid = amountPaid;
+	}
+
+	public LocalDate getPaymentDate() {
+		return paymentDate;
+	}
+
+	public void setPaymentDate(LocalDate paymentDate) {
+		this.paymentDate = paymentDate;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+	
+	
+}
+
+RepaymentRepository.java
+package com.project.repayment_service.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.project.repayment_service.entity.Repayment;
+
+public interface RepaymentRepository extends JpaRepository<Repayment,Long> {
+	List<Repayment> findByLoanId(Long loanId);
+}
+
+RepaymentService.java
+package com.project.repayment_service.service;
+
+import java.util.List;
+
+import com.project.repayment_service.dto.RepaymentDTO;
+
+public interface RepaymentService {
+	RepaymentDTO createRepayment(RepaymentDTO repaymentDTO);
+	RepaymentDTO getRepaymentById(Long repaymentId);
+	List<RepaymentDTO> getRepaymentsByLoanId(Long loanId);
+	List<RepaymentDTO> getAllRepayments();
+	void deleteRepayment(Long repaymentId);
+}
+
+RepaymentServiceImpl.java
+package com.project.repayment_service.service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
+import com.project.repayment_service.dto.RepaymentDTO;
+import com.project.repayment_service.entity.Repayment;
+import com.project.repayment_service.repository.RepaymentRepository;
+
+import jakarta.ws.rs.NotFoundException;
+
+@Service
+public class RepaymentServiceImpl implements RepaymentService{
+	private final RepaymentRepository repaymentRepository;
+	
+	public RepaymentServiceImpl(RepaymentRepository repaymentRepository) {
+		this.repaymentRepository=repaymentRepository;
+	}
+	
+	@Override
+	public RepaymentDTO createRepayment(RepaymentDTO repaymentDTO) {
+		Repayment repayment = new Repayment();
+		repayment.setLoanId(repaymentDTO.getLoanId());
+		repayment.setAmountPaid(repaymentDTO.getAmountPaid());
+		repayment.setPaymentDate(repaymentDTO.getPaymentDate());
+		repayment.setStatus(repaymentDTO.getStatus());
+		Repayment savedRepayment=repaymentRepository.save(repayment);
+		
+		repaymentDTO.setId(savedRepayment.getId());
+		return repaymentDTO;
+	}
+	
+	@Override
+	public RepaymentDTO getRepaymentById(Long repaymentId) {
+		Repayment repayment = repaymentRepository.findById(repaymentId)
+				.orElseThrow(()->new NotFoundException("Repayment not found"));
+		return mapToDTO(repayment);
+	}
+	
+	@Override
+	public List<RepaymentDTO> getRepaymentsByLoanId(Long loanId){
+		List<Repayment> repayments = repaymentRepository.findByLoanId(loanId);
+		return repayments.stream()
+				.map(this::mapToDTO)
+				.collect(Collectors.toList());
+	}
+	
+	@Override
+	public List<RepaymentDTO> getAllRepayments(){
+		List<Repayment> repayments = repaymentRepository.findAll();
+		return repayments.stream()
+				.map(this::mapToDTO)
+				.collect(Collectors.toList());
+	}
+	
+	@Override
+	public void deleteRepayment(Long repaymentId) {
+		repaymentRepository.deleteById(repaymentId);
+	}
+	
+	private RepaymentDTO mapToDTO(Repayment repayment) {
+		RepaymentDTO dto = new RepaymentDTO();
+		dto.setId(repayment.getId());
+		dto.setLoanId(repayment.getLoanId());
+		dto.setAmountPaid(repayment.getAmountPaid());
+		dto.setPaymentDate(repayment.getPaymentDate());
+		dto.setStatus(repayment.getStatus());
+		return dto;
+	}
+
+}
+application.properties
+spring.application.name=repayment-service
+server.port=8082
+spring.datasource.url=jdbc:mysql://localhost:3306/repayment_service
+spring.datasource.username=root
+spring.datasource.password=Abcs1234@#098
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+
+4)auth-service microservice
+AuthServiceApplication.java
+package com.project.auth_service;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication
+@EnableFeignClients
+public class AuthServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(AuthServiceApplication.class, args);
+	}
+
+}
+
+UserClient.java
+package com.project.auth_service.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.project.auth_service.dto.UserDTO;
+
+@FeignClient(name="user-service", url="${user.service.url}")
+public interface UserClient {
+	@GetMapping("/api/users/credentials")
+	UserDTO getUserByUsername(@RequestParam String username);
+}
+
+AppConfig.java
+package com.project.auth_service.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@Configuration
+public class AppConfig{
+	@Bean
+	BCryptPasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+}
+
+SecurityConfig.java
+package com.project.auth_service.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.project.auth_service.security.JwtAuthenticationFilter;
+import com.project.auth_service.security.JwtTokenProvider;
+
+@EnableWebSecurity
+@Configuration
+public class SecurityConfig {
+	private final JwtTokenProvider jwtTokenProvider;
+	
+	public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
+		this.jwtTokenProvider=jwtTokenProvider;
+	}
+	
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		return http
+				.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
+						.requestMatchers("/api/users/**").hasAnyRole("USER","ADMIN")
+						.anyRequest().authenticated()
+						)
+				.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+						UsernamePasswordAuthenticationFilter.class)
+				.build();
+	}
+	
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
+	}
+}
+
+AdminController.java
+package com.project.auth_service.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/admin")
+public class AdminController {
+	@GetMapping("/secure")
+	public ResponseEntity<String> adminAccess(){
+		return ResponseEntity.ok("This is a secure endpoint. Your token is vaild");
+	}
+}
+
+AuthController.java
+package com.project.auth_service.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.project.auth_service.dto.LoginRequest;
+import com.project.auth_service.dto.LoginResponse;
+import com.project.auth_service.service.AuthService;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+	private final AuthService authService;
+	
+	public AuthController(AuthService authService) {
+		this.authService=authService;
+	}
+	
+	@PostMapping("/login")
+	public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
+		return ResponseEntity.ok(authService.login(loginRequest));
+	}
+	
+	@GetMapping("/secure/test")
+	public ResponseEntity<String> testTokenAccess(){
+		return ResponseEntity.ok("This is a secure endpoint. Your token is vaild");
+	}
+}
+
+LoginRequest.java
+package com.project.auth_service.dto;
+
+public class LoginRequest {
+	//@NotBlank(message="Username is required")
+	private String username;
+	
+	//@NotBlank(message="Password is required")
+	private String password;
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	
+	
+}
+
+LoginResponse.java
+package com.project.auth_service.dto;
+
+public class LoginResponse {
+	private String token;
+	public LoginResponse(String token) {
+		this.token=token;
+	}
+	public String getToken() {
+		return token;
+	}
+}
+
+UserDTO.java
+package com.project.auth_service.dto;
+
+public class UserDTO {
+	private String username;
+	private String password;
+	private String email;
+	private String role;
+	
+	public String getUsername() {
+		return username;
+	}
+	public void setUsername(String username) {
+		this.username = username;
+	}
+	public String getPassword() {
+		return password;
+	}
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	public String getEmail() {
+		return email;
+	}
+	public void setEmail(String email) {
+		this.email = email;
+	}
+	public String getRole() {
+		return role;
+	}
+	public void setRole(String role) {
+		this.role = role;
+	}
+	
+	
+}
+
+AuthenticationException.java
+package com.project.auth_service.exception;
+
+public class AuthenticationException extends RuntimeException {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public AuthenticationException(String message) {
+		super(message);
+	}
+}
+
+GlobalExceptionHandler.java
+package com.project.auth_service.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<String> handleAuthenticationException(AuthenticationException ex) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
+	}
+}
+
+JwtAuthenticationFilter.java
+package com.project.auth_service.security;
+
+import java.io.IOException;
+import java.util.Collections;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.HttpHeaders;
+
+@WebFilter
+public class JwtAuthenticationFilter extends OncePerRequestFilter{
+	private final JwtTokenProvider jwtTokenProvider;
+	
+	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+		this.jwtTokenProvider=jwtTokenProvider;
+	}
+	
+	@Override
+	protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+		String token = getTokenFromRequest(request);
+		
+		if(token!=null && jwtTokenProvider.validateToken(token)) {
+			String username = jwtTokenProvider.getUsername(token);
+			String role = jwtTokenProvider.getRole(token);
+			
+			UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(username,null,Collections.singletonList(new SimpleGrantedAuthority("ROLE_"+role)));
+			SecurityContextHolder.getContext().setAuthentication(auth);
+		} else if(requiresAuth(request)) {
+			response.setStatus(HttpStatus.UNAUTHORIZED.value());
+			response.getWriter().write("Unauthorized: Invaild or missing token");
+			return;
+		}
+		filterChain.doFilter(request, response);
+	}
+	
+	private String getTokenFromRequest(HttpServletRequest request) {
+		String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
+		return (bearer != null && bearer.startsWith("Bearer "))? bearer.substring(7):null;
+	}
+	
+	private boolean requiresAuth(HttpServletRequest request) {
+		String path = request.getRequestURI();
+		return !path.startsWith("/api/auth/");
+	}
+}
+
+JwtTokenProvider.java
+package com.project.auth_service.security;
+
+import java.util.Date;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+@Component
+public class JwtTokenProvider {
+	private final String jwtSecret = "4r3j1mDOiFQ05NeO58qgWIhNnYQfhtVv+B/XjMpeRM=";
+	private final long jwtExpirationDate = 8640000;
+	
+	public String generateToken(String username, String role) {
+		Date currentDate=new Date();
+		Date expiryDate = new Date(currentDate.getTime()+jwtExpirationDate);
+		
+		return Jwts.builder()
+				.subject(username)
+				.claim("role",role)
+				.issuedAt(currentDate)
+				.expiration(expiryDate)
+				.signWith(getSignKey())
+				.compact();
+	}
+	
+	private SecretKey getSignKey() {
+		byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+		return Keys.hmacShaKeyFor(keyBytes);
+	}
+	
+	public boolean validateToken(String token) {
+		try {
+			Jwts.parser().verifyWith(getSignKey()).build().parseSignedClaims(token);
+			return true;
+		}catch (JwtException ex) {
+			return false;
+		}
+	}
+	
+	public String getUsername(String token) {
+		Claims claims = Jwts.parser().verifyWith(getSignKey()).build().parseSignedClaims(token).getPayload();
+		return claims.getSubject();
+	}
+	
+	public String getRole(String token) {
+		Claims claims = Jwts.parser().verifyWith(getSignKey()).build().parseSignedClaims(token).getPayload();
+		return claims.get("role",String.class);
+	}
+}
+
+AuthService.java
+package com.project.auth_service.service;
+
+import com.project.auth_service.dto.LoginRequest;
+import com.project.auth_service.dto.LoginResponse;
+
+public interface AuthService {
+	LoginResponse login(LoginRequest request);
+}
+
+AuthServiceImpl.java
+package com.project.auth_service.service;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.project.auth_service.client.UserClient;
+import com.project.auth_service.dto.LoginRequest;
+import com.project.auth_service.dto.LoginResponse;
+import com.project.auth_service.dto.UserDTO;
+import com.project.auth_service.exception.AuthenticationException;
+import com.project.auth_service.security.JwtTokenProvider;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+	private final UserClient userClient;
+	private final JwtTokenProvider jwtTokenProvider;
+	private final BCryptPasswordEncoder passwordEncoder;
+	
+	public AuthServiceImpl(UserClient userClient, JwtTokenProvider jwtTokenProvider, BCryptPasswordEncoder passwordEncoder) {
+		this.userClient=userClient;
+		this.jwtTokenProvider=jwtTokenProvider;
+		this.passwordEncoder=passwordEncoder;
+	}
+	
+	@Override
+	public LoginResponse login(LoginRequest request) {
+		UserDTO user = userClient.getUserByUsername(request.getUsername());
+		if(user==null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+			throw new AuthenticationException("Invalid username or password");
+		}
+		String token = jwtTokenProvider.generateToken(user.getUsername(), user.getRole());
+		return new LoginResponse(token);
+	}
+}
+
+SecretKeyGenerator.java
+package com.project.auth_service.util;
+
+import java.util.Base64;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class SecretKeyGenerator {
+	public String generateKey() throws Exception {
+		KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
+		keyGen.init(256);
+		SecretKey secretKey = keyGen.generateKey();
+		String base64key = Base64.getEncoder().encodeToString(secretKey.getEncoded());
+		return "Generated JWT Secret Key: \n"+ base64key;
+	}
+}
+
+Application.properties
+spring.application.name=auth-service
+server.port=8083
+
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+eureka.instance.lease-renewal-interval-in-seconds=10
+eureka.instance.lease-expiration-duration-in-seconds=30
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.instance.prefer-ip-address=true
+
+spring.datasource.url=jdbc:mysql://localhost:3306/auth_db
+spring.datasource.username=root
+spring.datasource.password=Abcs1234@#098
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+user.service.url=http://localhost:8080
+
+5) gateway microservice
+GatewayApplication.java
+package com.project.gateway;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class GatewayApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(GatewayApplication.class, args);
+	}
+
+}
+
+GatewayConfig.java
+package com.project.gateway.config;
+
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+@Configuration
+@EnableWebFluxSecurity
+@EnableReactiveMethodSecurity
+public class GatewayConfig {
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	
+	public GatewayConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+		this.jwtAuthenticationFilter=jwtAuthenticationFilter;
+	}
+	
+	@Bean
+	public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+		return http
+				.csrf(ServerHttpSecurity.CsrfSpec::disable)
+				.authorizeExchange(exchanges->exchanges
+						.pathMatchers("/api/auth/**").permitAll()
+						.pathMatchers("/api/users/**").hasAnyRole("USER","ADMIN")
+						.pathMatchers("/api/loans/**").hasRole("ADMIN")
+						.pathMatchers("/api/repayments/**").hasAnyRole("USER","ADMIN")
+						.anyExchange().denyAll()
+						)
+				.build();
+	}
+	
+	@Bean
+	public RouteLocator customRoutes(RouteLocatorBuilder builder) {
+		return builder.routes()
+				.route("auth-service",r->r.path("/api/auth/**")
+						.uri("lb://AUTH-SERVICE"))
+				.route("user-service",r->r.path("/api/users/**")
+						.uri("lb://USER-SERVICE"))
+				.route("loan-service",r->r.path("/api/loans/**")
+						.uri("lb://LOAN-SERVICE"))
+				.route("repayment-service",r->r.path("/api/repayments/**")
+						.uri("lb://REPAYMENT-SERVICE"))
+				.build();
+	}
+}
+
+JwtAuthenticationFilter.java
+package com.project.gateway.config;
+
+import java.util.List;
+
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.server.ServerWebExchange;
+
+import io.jsonwebtoken.Claims;
+import reactor.core.publisher.Mono;
+
+public class JwtAuthenticationFilter implements GlobalFilter, Ordered{
+	private final JwtTokenProvider jwtTokenProvider;
+	
+	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+		this.jwtTokenProvider=jwtTokenProvider;
+	}
+	
+	@Override
+	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain){
+		String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+		
+		if(authHeader==null || !authHeader.startsWith("Bearer ")) {
+			exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+			return exchange.getResponse().setComplete();
+		}
+		String token = authHeader.substring(7);
+		
+		if(!jwtTokenProvider.validateToken(token)) {
+			exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+			return exchange.getResponse().setComplete();
+		}
+		
+		Claims claims = jwtTokenProvider.getAllClaims(token);
+		String username = claims.getSubject();
+
+		List<String> roles = jwtTokenProvider.getRoles(token);
+		
+		ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+				.header("X-Username", username)
+				.header("X-Roles", String.join(",", roles))
+				.build();
+			return chain.filter(exchange.mutate().request(mutatedRequest).build());
+		}
+
+		@Override
+		public int getOrder() {
+		return -1; // Ensures the filter runs first
+		}
+	}
+
+
+JwtTokenProvider.java
+package com.project.gateway.config;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Component;
+
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+
+@Component
+public class JwtTokenProvider {
+	private String jwtSecret="4r3j1mDOiFQ05NeO58qgWIhNnYQfhtVv+B/XjMpeRM=";
+	private SecretKey key;
+	
+	private final ObjectMapper objectMapper = new ObjectMapper();
+	
+	@PostConstruct
+	public void init() {
+		this.key=Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+	}
+	
+	public boolean validateToken(String token) {
+		try {
+			Jwts.parserBuilder()
+				.setSigningKey(key)
+				.build()
+				.parseClaimsJws(token);
+			return true;
+		} catch (JwtException | IllegalArgumentException e) {
+			return false;
+		}
+	}
+	
+	public Claims getAllClaims(String token) {
+		return Jwts.parserBuilder()
+				.setSigningKey(key)
+				.build()
+				.parseClaimsJws(token)
+				.getBody();
+	}
+	
+	public List<String> getRoles(String token){
+		Object rolesObj = getAllClaims(token).get("roles");
+		return objectMapper.convertValue(rolesObj, new TypeReference<List<String>>() {});
+	}
+	
+	public String getUsername(String token) {
+		return getAllClaims(token).getSubject();
+	}
+	
+	public Date getExpiration(String token) {
+		return getAllClaims(token).getExpiration();
+	}
+}
+
+GatewayController.java
+package com.project.gateway.controller;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class GatewayController {
+	@GetMapping("/gateway/health")
+	public String healthCheck() {
+		return "Gateway is up and runnning";
+	}
+}
+
+UnauthorizedException.java
+package com.project.gateway.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.UNAUTHORIZED)
+public class UnauthorizedException extends RuntimeException{
+	private static final long serialVersionUID=1L;
+	public UnauthorizedException(String message) {
+		super(message);
+	}
+}
+
+application.properties
+spring.application.name=gateway
+
+server.port=8085
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+spring.main.web-application-type=reactive
+
+spring.cloud.gateway.discovery.locator.enabled=true
+spring.cloud.gateway.discovery.locator.lower-case-service-id=true
+
+logging.level.org.springframework.cloud.gateway=DEBUG
+logging.level.reactor.netty.http.client=DEBUG
+
+spring.main.allow-bean-definition-overriding=true
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
